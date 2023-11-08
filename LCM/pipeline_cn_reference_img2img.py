@@ -54,11 +54,12 @@ def prepare_image(image):
         if isinstance(image, (PIL.Image.Image, np.ndarray)):
             image = [image]
 
-        if isinstance(image, list) and isinstance(image[0], PIL.Image.Image):
-            image = [np.array(i.convert("RGB"))[None, :] for i in image]
-            image = np.concatenate(image, axis=0)
-        elif isinstance(image, list) and isinstance(image[0], np.ndarray):
-            image = np.concatenate([i[None, :] for i in image], axis=0)
+        if isinstance(image, list):
+            if isinstance(image[0], PIL.Image.Image):
+                image = [np.array(i.convert("RGB"))[None, :] for i in image]
+                image = np.concatenate(image, axis=0)
+            elif isinstance(image[0], np.ndarray):
+                image = np.concatenate([i[None, :] for i in image], axis=0)
 
         image = image.transpose(0, 3, 1, 2)
         image = torch.from_numpy(image).to(dtype=torch.float32) / 127.5 - 1.0
@@ -151,12 +152,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
         image = self.control_image_processor.preprocess(image, height=height, width=width).to(dtype=torch.float32)
         image_batch_size = image.shape[0]
 
-        if image_batch_size == 1:
-            repeat_by = batch_size
-        else:
-            # image batch size is the same as prompt batch size
-            repeat_by = num_images_per_prompt
-
+        repeat_by = batch_size if image_batch_size == 1 else num_images_per_prompt
         image = image.repeat_interleave(repeat_by, dim=0)
 
         image = image.to(device=device, dtype=dtype)
@@ -201,17 +197,12 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
 
         image_batch_size = image.shape[0]
 
-        if image_batch_size == 1:
-            repeat_by = batch_size
-        else:
-            # image batch size is the same as prompt batch size
-            repeat_by = num_images_per_prompt
-
+        repeat_by = batch_size if image_batch_size == 1 else num_images_per_prompt
         image = image.repeat_interleave(repeat_by, dim=0)
 
         image = image.to(device=device, dtype=dtype)
 
-        
+
 
         return image
 
@@ -244,17 +235,17 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
 
             ref_image_latents = self.vae.config.scaling_factor * ref_image_latents
         # encode the mask image into latents space so we can concatenate it to the latents
-        
-        
-        
+
+
+
             
-        
+
             
-        
+
 
         # duplicate mask and ref_image_latents for each generation per prompt, using mps friendly method
         if ref_image_latents.shape[0] < batch_size:
-            if not batch_size % ref_image_latents.shape[0] == 0:
+            if batch_size % ref_image_latents.shape[0] != 0:
                 raise ValueError(
                     "The passed images and the required batch size don't match. Images are supposed to be duplicated"
                     f" to a total batch size of {batch_size}, but {ref_image_latents.shape[0]} images were passed."
@@ -359,7 +350,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
 
     def prepare_latents(self, image, timestep, batch_size, num_channels_latents, height, width, dtype, device, latents=None, generator=None):
         shape = (batch_size, num_channels_latents, height // self.vae_scale_factor, width // self.vae_scale_factor)
-        
+
         if not isinstance(image, (torch.Tensor, PIL.Image.Image, list)):
             raise ValueError(
                 f"`image` has to be of type `torch.Tensor`, `PIL.Image.Image` or list but is {type(image)}"
@@ -400,7 +391,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
             #deprecate("len(prompt) != len(image)", "1.0.0", deprecation_message, standard_warn=False)
             additional_image_per_prompt = batch_size // init_latents.shape[0]
             init_latents = torch.cat([init_latents] * additional_image_per_prompt, dim=0)
-        elif batch_size > init_latents.shape[0] and batch_size % init_latents.shape[0] != 0:
+        elif batch_size > init_latents.shape[0]:
             raise ValueError(
                 f"Cannot duplicate `image` of batch size {init_latents.shape[0]} to {batch_size} text prompts."
             )
@@ -414,17 +405,6 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
         init_latents = self.scheduler.add_noise(init_latents, noise, timestep)
         latents = init_latents
 
-        return latents
-        
-        
-        
-        
-        if latents is None:
-            latents = torch.randn(shape, dtype=dtype).to(device)
-        else:
-            latents = latents.to(device)
-        # scale the initial noise by the standard deviation required by the scheduler
-        latents = latents * self.scheduler.init_noise_sigma
         return latents
 
     def get_w_embedding(self, w, embedding_dim=512, dtype=torch.float32):
@@ -593,7 +573,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
             width,
             prompt_embeds.dtype,
             device,
-                        
+
         )
         MODE = "write"
         uc_mask = (
@@ -647,7 +627,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
                             **cross_attention_kwargs,
                         )
                         attn_output_c = attn_output_uc.clone()
-                        
+
                         attn_output = style_fidelity * attn_output_c + (1.0 - style_fidelity) * attn_output_uc
                         self.bank.clear()
                     else:
@@ -707,7 +687,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
                     std_acc = torch.maximum(var_acc, torch.zeros_like(var_acc) + eps) ** 0.5
                     x_uc = (((x - mean) / std) * std_acc) + mean_acc
                     x_c = x_uc.clone()
-                    
+
                     x = style_fidelity * x_c + (1.0 - style_fidelity) * x_uc
                 self.mean_bank = []
                 self.var_bank = []
@@ -722,7 +702,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
             cross_attention_kwargs: Optional[Dict[str, Any]] = None,
             encoder_attention_mask: Optional[torch.FloatTensor] = None,
             **kwargs
-            
+
         ):
             eps = 1e-6
 
@@ -753,7 +733,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
                         std_acc = torch.maximum(var_acc, torch.zeros_like(var_acc) + eps) ** 0.5
                         hidden_states_uc = (((hidden_states - mean) / std) * std_acc) + mean_acc
                         hidden_states_c = hidden_states_uc.clone()
-                        
+
                         hidden_states = style_fidelity * hidden_states_c + (1.0 - style_fidelity) * hidden_states_uc
 
                 output_states = output_states + (hidden_states,)
@@ -792,7 +772,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
                         std_acc = torch.maximum(var_acc, torch.zeros_like(var_acc) + eps) ** 0.5
                         hidden_states_uc = (((hidden_states - mean) / std) * std_acc) + mean_acc
                         hidden_states_c = hidden_states_uc.clone()
-                        
+
                         hidden_states = style_fidelity * hidden_states_c + (1.0 - style_fidelity) * hidden_states_uc
 
                 output_states = output_states + (hidden_states,)
@@ -851,7 +831,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
                         std_acc = torch.maximum(var_acc, torch.zeros_like(var_acc) + eps) ** 0.5
                         hidden_states_uc = (((hidden_states - mean) / std) * std_acc) + mean_acc
                         hidden_states_c = hidden_states_uc.clone()
-                        
+
                         hidden_states = style_fidelity * hidden_states_c + (1.0 - style_fidelity) * hidden_states_uc
 
             if MODE == "read":
@@ -887,7 +867,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
                         std_acc = torch.maximum(var_acc, torch.zeros_like(var_acc) + eps) ** 0.5
                         hidden_states_uc = (((hidden_states - mean) / std) * std_acc) + mean_acc
                         hidden_states_c = hidden_states_uc.clone()
-                        
+
                         hidden_states = style_fidelity * hidden_states_c + (1.0 - style_fidelity) * hidden_states_uc
 
             if MODE == "read":
@@ -1033,7 +1013,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
             self.unet.to("cpu")
             self.controlnet.to("cpu")
             torch.cuda.empty_cache()
-        if not output_type == "latent":
+        if output_type != "latent":
             image = self.vae.decode(denoised / self.vae.config.scaling_factor, return_dict=False)[0]
             image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
         else:
@@ -1046,7 +1026,7 @@ class LatentConsistencyModelPipeline_reference_img2img(DiffusionPipeline):
             do_denormalize = [not has_nsfw for has_nsfw in has_nsfw_concept]
 
         image = self.image_processor.postprocess(image, output_type=output_type, do_denormalize=do_denormalize)
-        
+
 
         if not return_dict:
             return (image, has_nsfw_concept)
@@ -1140,7 +1120,7 @@ def rescale_zero_terminal_snr(betas):
     # Convert alphas_bar_sqrt to betas
     alphas_bar = alphas_bar_sqrt**2  # Revert sqrt
     alphas = alphas_bar[1:] / alphas_bar[:-1]  # Revert cumprod
-    alphas = torch.cat([alphas_bar[0:1], alphas])
+    alphas = torch.cat([alphas_bar[:1], alphas])
     betas = 1 - alphas
 
     return betas
@@ -1274,9 +1254,9 @@ class LCMScheduler_X(SchedulerMixin, ConfigMixin):
         beta_prod_t = 1 - alpha_prod_t
         beta_prod_t_prev = 1 - alpha_prod_t_prev
 
-        variance = (beta_prod_t_prev / beta_prod_t) * (1 - alpha_prod_t / alpha_prod_t_prev)
-
-        return variance
+        return (beta_prod_t_prev / beta_prod_t) * (
+            1 - alpha_prod_t / alpha_prod_t_prev
+        )
 
     # Copied from diffusers.schedulers.scheduling_ddpm.DDPMScheduler._threshold_sample
     def _threshold_sample(self, sample: torch.FloatTensor) -> torch.FloatTensor:
@@ -1457,8 +1437,7 @@ class LCMScheduler_X(SchedulerMixin, ConfigMixin):
         while len(sqrt_one_minus_alpha_prod.shape) < len(original_samples.shape):
             sqrt_one_minus_alpha_prod = sqrt_one_minus_alpha_prod.unsqueeze(-1)
 
-        noisy_samples = sqrt_alpha_prod * original_samples + sqrt_one_minus_alpha_prod * noise
-        return noisy_samples
+        return sqrt_alpha_prod * original_samples + sqrt_one_minus_alpha_prod * noise
 
     # Copied from diffusers.schedulers.scheduling_ddpm.DDPMScheduler.get_velocity
     def get_velocity(
@@ -1478,8 +1457,7 @@ class LCMScheduler_X(SchedulerMixin, ConfigMixin):
         while len(sqrt_one_minus_alpha_prod.shape) < len(sample.shape):
             sqrt_one_minus_alpha_prod = sqrt_one_minus_alpha_prod.unsqueeze(-1)
 
-        velocity = sqrt_alpha_prod * noise - sqrt_one_minus_alpha_prod * sample
-        return velocity
+        return sqrt_alpha_prod * noise - sqrt_one_minus_alpha_prod * sample
 
     def __len__(self):
         return self.config.num_train_timesteps
