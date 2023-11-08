@@ -75,12 +75,11 @@ class IPAdapter:
         self.load_ip_adapter()
         
     def init_proj(self):
-        image_proj_model = ImageProjModel(
+        return ImageProjModel(
             cross_attention_dim=self.pipe.unet.config.cross_attention_dim,
             clip_embeddings_dim=self.image_encoder.config.projection_dim,
             clip_extra_context_tokens=self.num_tokens,
         ).to(self.device, dtype=torch.float32)
-        return image_proj_model
         
     def set_ip_adapter(self):
         unet = self.pipe.unet
@@ -149,26 +148,22 @@ class IPAdapter:
         guidance_scale=7.5,
         num_inference_steps=30,
         control_image = None,
-        
+
         **kwargs,
     ):
         self.set_scale(scale)
-        
-        if isinstance(pil_image, Image.Image):
-            num_prompts = 1
-        else:
-            num_prompts = len(pil_image)
-        
+
+        num_prompts = 1 if isinstance(pil_image, Image.Image) else len(pil_image)
         if prompt is None:
             prompt = "best quality, high quality"
         if negative_prompt is None:
             negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-            
+
         if not isinstance(prompt, List):
             prompt = [prompt] * num_prompts
         if not isinstance(negative_prompt, List):
             negative_prompt = [negative_prompt] * num_prompts
-        
+
         image_prompt_embeds, uncond_image_prompt_embeds = self.get_image_embeds(pil_image)
         bs_embed, seq_len, _ = image_prompt_embeds.shape
         image_prompt_embeds = image_prompt_embeds.repeat(1, num_samples, 1)
@@ -182,7 +177,7 @@ class IPAdapter:
             prompt_embeds_ = prompt_embeds
             prompt_embeds = torch.cat([prompt_embeds_, image_prompt_embeds], dim=1)
             #negative_prompt_embeds = torch.cat([negative_prompt_embeds_, uncond_image_prompt_embeds], dim=1)
-        
+
         generator = torch.Generator(self.device).manual_seed(seed) if seed is not None else None
         images = self.pipe(
             prompt_embeds=prompt_embeds,
@@ -193,7 +188,7 @@ class IPAdapter:
             control_image=control_image,
             **kwargs,
         ).images
-        
+
         return images
     
     
@@ -212,22 +207,18 @@ class IPAdapterXL(IPAdapter):
         **kwargs,
     ):
         self.set_scale(scale)
-        
-        if isinstance(pil_image, Image.Image):
-            num_prompts = 1
-        else:
-            num_prompts = len(pil_image)
-        
+
+        num_prompts = 1 if isinstance(pil_image, Image.Image) else len(pil_image)
         if prompt is None:
             prompt = "best quality, high quality"
         if negative_prompt is None:
             negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-            
+
         if not isinstance(prompt, List):
             prompt = [prompt] * num_prompts
         if not isinstance(negative_prompt, List):
             negative_prompt = [negative_prompt] * num_prompts
-        
+
         image_prompt_embeds, uncond_image_prompt_embeds = self.get_image_embeds(pil_image)
         bs_embed, seq_len, _ = image_prompt_embeds.shape
         image_prompt_embeds = image_prompt_embeds.repeat(1, num_samples, 1)
@@ -240,7 +231,7 @@ class IPAdapterXL(IPAdapter):
                 prompt, num_images_per_prompt=num_samples, do_classifier_free_guidance=True, negative_prompt=negative_prompt)
             prompt_embeds = torch.cat([prompt_embeds, image_prompt_embeds], dim=1)
             negative_prompt_embeds = torch.cat([negative_prompt_embeds, uncond_image_prompt_embeds], dim=1)
-            
+
         generator = torch.Generator(self.device).manual_seed(seed) if seed is not None else None
         images = self.pipe(
             prompt_embeds=prompt_embeds,
@@ -251,7 +242,7 @@ class IPAdapterXL(IPAdapter):
             generator=generator,
             **kwargs,
         ).images
-        
+
         return images
     
     
@@ -259,7 +250,7 @@ class IPAdapterPlus(IPAdapter):
     """IP-Adapter with fine-grained features"""
 
     def init_proj(self):
-        image_proj_model = Resampler(
+        return Resampler(
             dim=self.pipe.unet.config.cross_attention_dim,
             depth=4,
             dim_head=64,
@@ -267,9 +258,8 @@ class IPAdapterPlus(IPAdapter):
             num_queries=self.num_tokens,
             embedding_dim=self.image_encoder.config.hidden_size,
             output_dim=self.pipe.unet.config.cross_attention_dim,
-            ff_mult=4
+            ff_mult=4,
         ).to(self.device, dtype=torch.float32)
-        return image_proj_model
     
     @torch.inference_mode()
     def get_image_embeds(self, pil_image):
@@ -288,7 +278,7 @@ class IPAdapterPlusXL(IPAdapter):
     """SDXL"""
 
     def init_proj(self):
-        image_proj_model = Resampler(
+        return Resampler(
             dim=1280,
             depth=4,
             dim_head=64,
@@ -296,9 +286,8 @@ class IPAdapterPlusXL(IPAdapter):
             num_queries=self.num_tokens,
             embedding_dim=self.image_encoder.config.hidden_size,
             output_dim=self.pipe.unet.config.cross_attention_dim,
-            ff_mult=4
+            ff_mult=4,
         ).to(self.device, dtype=torch.float32)
-        return image_proj_model
     
     @torch.inference_mode()
     def get_image_embeds(self, pil_image):
@@ -324,22 +313,18 @@ class IPAdapterPlusXL(IPAdapter):
         **kwargs,
     ):
         self.set_scale(scale)
-        
-        if isinstance(pil_image, Image.Image):
-            num_prompts = 1
-        else:
-            num_prompts = len(pil_image)
-        
+
+        num_prompts = 1 if isinstance(pil_image, Image.Image) else len(pil_image)
         if prompt is None:
             prompt = "best quality, high quality"
         if negative_prompt is None:
             negative_prompt = "monochrome, lowres, bad anatomy, worst quality, low quality"
-            
+
         if not isinstance(prompt, List):
             prompt = [prompt] * num_prompts
         if not isinstance(negative_prompt, List):
             negative_prompt = [negative_prompt] * num_prompts
-        
+
         image_prompt_embeds, uncond_image_prompt_embeds = self.get_image_embeds(pil_image)
         bs_embed, seq_len, _ = image_prompt_embeds.shape
         image_prompt_embeds = image_prompt_embeds.repeat(1, num_samples, 1)
@@ -352,7 +337,7 @@ class IPAdapterPlusXL(IPAdapter):
                 prompt, num_images_per_prompt=num_samples, do_classifier_free_guidance=True, negative_prompt=negative_prompt)
             prompt_embeds = torch.cat([prompt_embeds, image_prompt_embeds], dim=1)
             negative_prompt_embeds = torch.cat([negative_prompt_embeds, uncond_image_prompt_embeds], dim=1)
-            
+
         generator = torch.Generator(self.device).manual_seed(seed) if seed is not None else None
         images = self.pipe(
             prompt_embeds=prompt_embeds,
@@ -363,5 +348,5 @@ class IPAdapterPlusXL(IPAdapter):
             generator=generator,
             **kwargs,
         ).images
-        
+
         return images

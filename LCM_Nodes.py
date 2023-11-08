@@ -61,7 +61,7 @@ class LCMLoader_controlnet_inpaint:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "device": (["GPU", "CPU"],),
@@ -124,7 +124,7 @@ class LCMLoader_controlnet:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "device": (["GPU", "CPU"],),
@@ -189,7 +189,7 @@ class LCMLoader_img2img:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "device": (["GPU", "CPU"],),
@@ -248,7 +248,7 @@ class LCMLoader_ReferenceOnly:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "device": (["GPU", "CPU"],),
@@ -327,7 +327,7 @@ class LCMLoader_RefInpaint:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "device": (["GPU", "CPU"],),
@@ -400,7 +400,7 @@ class LCMLoader:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "device": (["GPU", "CPU"],),
@@ -474,7 +474,7 @@ class LCMT2IAdapter:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "T2Iadapter": ([i for i in os.listdir(folder_paths.get_folder_paths("controlnet")[0]) if os.path.isdir(folder_paths.get_folder_paths("controlnet")[0]+f"/{i}") or  os.path.isdir(folder_paths.get_folder_paths("controlnet")[0]+f"\{i}")],)                
@@ -499,7 +499,7 @@ class LCM_IPAdapter_inpaint:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "device":(["cpu","cuda"],),
@@ -560,13 +560,13 @@ class LCM_IPAdapter:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "device":(["cpu","cuda"],),
                 "ip_adapter":([i for i in os.listdir(folder_paths.get_folder_paths("controlnet")[0]) if str(i).endswith((".ckpt",".safetensors",".bin"))],),
                 "ip_adapter_full_path":("STRING", {"default": '', "multiline": False}),
-                
+
             }
         }
     RETURN_TYPES = ("class",)
@@ -618,7 +618,7 @@ class LCMGenerate_img2img_IPAdapter:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {	
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
@@ -629,7 +629,7 @@ class LCMGenerate_img2img_IPAdapter:
                     "max": 360,
                     "step": 1,
                 }),
-                
+
                 "width": ("INT", {
                     "default": 512,
                     "min": 0,
@@ -669,7 +669,7 @@ class LCMGenerate_img2img_IPAdapter:
                     "step": 1,
                 }),
                 "image": ("IMAGE", ),
-                
+
                 "ip_model":("class",),
                 "pil_image":("IMAGE",),
                 "scale": ("FLOAT", {
@@ -693,38 +693,25 @@ class LCMGenerate_img2img_IPAdapter:
         img = image[0].numpy()
         img = img*255.0
         image = Image.fromarray(np.uint8(img))
-        
+
         res = []
         prompt = text
         if prompt_weighting == "enable":
 
             compel_proc = Compel(tokenizer=pipe.tokenizer, text_encoder=pipe.text_encoder)
             prompt_embeds = compel_proc(prompt)
-            for i in range(0,batch):
-                seed = random.randint(0,1000000000000000)
-                torch.manual_seed(seed)
+        for _ in range(0,batch):
+            seed = random.randint(0,1000000000000000)
+            torch.manual_seed(seed)
             # Output Images:
 
-                images = ip_model.generate(pil_image=pil_image, num_samples=1, num_inference_steps=steps, seed=seed, image=image, strength=strength,scale=scale)
-                res.append(images[0])
-                if loopback == "enable" and batch==1:
-                    for j in range(0,loopback_iterations):
-                        images = ip_model.generate(pil_image=pil_image, num_samples=1, num_inference_steps=steps, seed=seed, image=image, strength=strength,scale=scale)
-                
-                        res.append(images[0])
-        else:
-            for i in range(0,batch):
-                seed = random.randint(0,1000000000000000)
-                torch.manual_seed(seed)
-            # Output Images:
-                images = ip_model.generate(pil_image=pil_image, num_samples=1, num_inference_steps=steps, seed=seed, image=image, strength=strength,scale=scale)
-                
-                res.append(images[0])
-                if loopback == "enable" and batch==1:
-                    for j in range(0,loopback_iterations):
-                        images = ip_model.generate(pil_image=pil_image, num_samples=1, num_inference_steps=steps, seed=seed, image=image, strength=strength,scale=scale)
-                        res.append(images[0])               
-            
+            images = ip_model.generate(pil_image=pil_image, num_samples=1, num_inference_steps=steps, seed=seed, image=image, strength=strength,scale=scale)
+            res.append(images[0])
+            if loopback == "enable" and batch==1:
+                for _ in range(0,loopback_iterations):
+                    images = ip_model.generate(pil_image=pil_image, num_samples=1, num_inference_steps=steps, seed=seed, image=image, strength=strength,scale=scale)
+
+                    res.append(images[0])
         return (res,)
 
 class LCMGenerate:
@@ -732,7 +719,7 @@ class LCMGenerate:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "mode": (["Inpaint", "Outpaint"],),	
@@ -744,7 +731,7 @@ class LCMGenerate:
                     "max": 360,
                     "step": 1,
                 }),
-                
+
                 "width": ("INT", {
                     "default": 512,
                     "min": 0,
@@ -819,24 +806,73 @@ class LCMGenerate:
         if prompt_weighting == "enable":
             compel_proc = Compel(tokenizer=pipe.tokenizer, text_encoder=pipe.text_encoder)
             prompt_embeds = compel_proc(prompt)
-            for i in range(0,batch):
+            for _ in range(0,batch):
                 seed = random.randint(0,1000000000000000)
                 torch.manual_seed(seed)
             # Output Images:
-                if Reference_Only == "enable":
-                    images = pipe(prompt_embeds=prompt_embeds, num_images_per_prompt=1, num_inference_steps=steps, guidance_scale=cfg, lcm_origin_steps=50,width=width,height=height,strength = 1.0, image=image, mask_image=mask,ref_image=reference_image,style_fidelity=style_fidelity).images
-                else:
-                    images = pipe(prompt_embeds=prompt_embeds, num_images_per_prompt=1, num_inference_steps=steps, guidance_scale=cfg, lcm_origin_steps=50,width=width,height=height,strength = 1.0, image=image, mask_image=mask).images
+                images = (
+                    pipe(
+                        prompt_embeds=prompt_embeds,
+                        num_images_per_prompt=1,
+                        num_inference_steps=steps,
+                        guidance_scale=cfg,
+                        lcm_origin_steps=50,
+                        width=width,
+                        height=height,
+                        strength=1.0,
+                        image=image,
+                        mask_image=mask,
+                        ref_image=reference_image,
+                        style_fidelity=style_fidelity,
+                    ).images
+                    if Reference_Only == "enable"
+                    else pipe(
+                        prompt_embeds=prompt_embeds,
+                        num_images_per_prompt=1,
+                        num_inference_steps=steps,
+                        guidance_scale=cfg,
+                        lcm_origin_steps=50,
+                        width=width,
+                        height=height,
+                        strength=1.0,
+                        image=image,
+                        mask_image=mask,
+                    ).images
+                )
         else:
-            for i in range(0,batch):
+            for _ in range(0,batch):
                 seed = random.randint(0,1000000000000000)
                 torch.manual_seed(seed)
             # Output Images:
-                if Reference_Only == "enable":
-                    images = pipe(prompt=prompt, num_images_per_prompt=1, num_inference_steps=steps, guidance_scale=cfg, lcm_origin_steps=50,width=width,height=height,strength = 1.0, image=image, mask_image=mask,ref_image=reference_image,style_fidelity=style_fidelity).images
-                else:
-                    images = pipe(prompt=prompt, num_images_per_prompt=1, num_inference_steps=steps, guidance_scale=cfg, lcm_origin_steps=50,width=width,height=height,strength = 1.0, image=image, mask_image=mask).images
-        
+                images = (
+                    pipe(
+                        prompt=prompt,
+                        num_images_per_prompt=1,
+                        num_inference_steps=steps,
+                        guidance_scale=cfg,
+                        lcm_origin_steps=50,
+                        width=width,
+                        height=height,
+                        strength=1.0,
+                        image=image,
+                        mask_image=mask,
+                        ref_image=reference_image,
+                        style_fidelity=style_fidelity,
+                    ).images
+                    if Reference_Only == "enable"
+                    else pipe(
+                        prompt=prompt,
+                        num_images_per_prompt=1,
+                        num_inference_steps=steps,
+                        guidance_scale=cfg,
+                        lcm_origin_steps=50,
+                        width=width,
+                        height=height,
+                        strength=1.0,
+                        image=image,
+                        mask_image=mask,
+                    ).images
+                )
                 res.append(images[0])
         if mode == "Outpaint":
             if outpaint_direction == "right":
@@ -879,10 +915,10 @@ class LCMGenerate:
                 newmaskbg =newmaskbg.convert('L')
                 newmaskbg = ImageOps.invert(newmaskbg)
                 image = Image.composite(newbg, newbg2, newmaskbg)
-            
+
         else:
             newres = []
-            for i in range(0,1):
+            for _ in range(0,1):
                 image = res[0]
                 image = np.array(image).astype(np.float32) / 255.0
                 image = torch.from_numpy(image)[None,]
@@ -890,49 +926,71 @@ class LCMGenerate:
             return (res,)
         seed = random.randint(0,1000000000000000)
         torch.manual_seed(seed)
-    # Output Images:
-        if mode == "Outpaint" and oupaint_quality=="higher":
-            newres = []
-            if outpaint_direction == "left":
-                mask = Image.new("RGB", (image.size[0],image.size[1]), (0,0,0))
-                draw = ImageDraw.Draw(mask)
-                draw.rectangle((outpaint_size-30,0,outpaint_size+30,res[0].size[1]-outpaint_size), fill=(255,255,255))
-                mask_blur = mask.filter(ImageFilter.GaussianBlur(10))
-                masknew = mask_blur
-            elif outpaint_direction == "right":
-                mask = Image.new("RGB", (image.size[0],image.size[1]), (0,0,0))
-                draw = ImageDraw.Draw(mask)
-                draw.rectangle((res[0].size[1]-outpaint_size-30,0,res[0].size[1]-outpaint_size+30,res[0].size[1]-outpaint_size), fill=(255,255,255))
-                mask_blur = mask.filter(ImageFilter.GaussianBlur(10))
-                masknew = mask_blur
-            elif outpaint_direction == "top":
-                mask = Image.new("RGB", (image.size[0],image.size[1]), (0,0,0))
-                draw = ImageDraw.Draw(mask)
-                draw.rectangle((0,outpaint_size-30,res[0].size[1]-outpaint_size,outpaint_size+30), fill=(255,255,255))
-                mask_blur = mask.filter(ImageFilter.GaussianBlur(10))
-                masknew = mask_blur
-            elif outpaint_direction == "bottom":
-                mask = Image.new("RGB", (image.size[0],image.size[1]), (0,0,0))
-                draw = ImageDraw.Draw(mask)
-                draw.rectangle((0,res[0].size[1]-outpaint_size-30,res[0].size[0]-outpaint_size,res[0].size[1]-outpaint_size+30), fill=(255,255,255))
-                mask_blur = mask.filter(ImageFilter.GaussianBlur(10))
-                masknew = mask_blur
-            image = image.convert("RGB")
-            if Reference_Only == "enable":
-                images = pipe(prompt=prompt, num_images_per_prompt=1, num_inference_steps=steps, guidance_scale=cfg, lcm_origin_steps=50,width=image.size[0],height=image.size[1],strength = 1.0, image=image, mask_image=masknew,ref_image=image,style_fidelity=style_fidelity).images
-            else:
-                images = pipe(prompt=prompt, num_images_per_prompt=1, num_inference_steps=steps, guidance_scale=cfg, lcm_origin_steps=50,width=image.size[0],height=image.size[1],strength = 1.0, image=image, mask_image=masknew).images
-            newres.append(images[0])
-            return (newres,)
-        else:
+        if mode != "Outpaint" or oupaint_quality != "higher":
             return ([image],)
+        if outpaint_direction == "left":
+            mask = Image.new("RGB", (image.size[0],image.size[1]), (0,0,0))
+            draw = ImageDraw.Draw(mask)
+            draw.rectangle((outpaint_size-30,0,outpaint_size+30,res[0].size[1]-outpaint_size), fill=(255,255,255))
+            mask_blur = mask.filter(ImageFilter.GaussianBlur(10))
+            masknew = mask_blur
+        elif outpaint_direction == "right":
+            mask = Image.new("RGB", (image.size[0],image.size[1]), (0,0,0))
+            draw = ImageDraw.Draw(mask)
+            draw.rectangle((res[0].size[1]-outpaint_size-30,0,res[0].size[1]-outpaint_size+30,res[0].size[1]-outpaint_size), fill=(255,255,255))
+            mask_blur = mask.filter(ImageFilter.GaussianBlur(10))
+            masknew = mask_blur
+        elif outpaint_direction == "top":
+            mask = Image.new("RGB", (image.size[0],image.size[1]), (0,0,0))
+            draw = ImageDraw.Draw(mask)
+            draw.rectangle((0,outpaint_size-30,res[0].size[1]-outpaint_size,outpaint_size+30), fill=(255,255,255))
+            mask_blur = mask.filter(ImageFilter.GaussianBlur(10))
+            masknew = mask_blur
+        elif outpaint_direction == "bottom":
+            mask = Image.new("RGB", (image.size[0],image.size[1]), (0,0,0))
+            draw = ImageDraw.Draw(mask)
+            draw.rectangle((0,res[0].size[1]-outpaint_size-30,res[0].size[0]-outpaint_size,res[0].size[1]-outpaint_size+30), fill=(255,255,255))
+            mask_blur = mask.filter(ImageFilter.GaussianBlur(10))
+            masknew = mask_blur
+        image = image.convert("RGB")
+        images = (
+            pipe(
+                prompt=prompt,
+                num_images_per_prompt=1,
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                lcm_origin_steps=50,
+                width=image.size[0],
+                height=image.size[1],
+                strength=1.0,
+                image=image,
+                mask_image=masknew,
+                ref_image=image,
+                style_fidelity=style_fidelity,
+            ).images
+            if Reference_Only == "enable"
+            else pipe(
+                prompt=prompt,
+                num_images_per_prompt=1,
+                num_inference_steps=steps,
+                guidance_scale=cfg,
+                lcm_origin_steps=50,
+                width=image.size[0],
+                height=image.size[1],
+                strength=1.0,
+                image=image,
+                mask_image=masknew,
+            ).images
+        )
+        newres = [images[0]]
+        return (newres,)
 
 class LCMGenerate_inpaintv2:
     def __init__(self):
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "mode": (["Inpaint", "Outpaint"],),	
@@ -944,7 +1002,7 @@ class LCMGenerate_inpaintv2:
                     "max": 360,
                     "step": 1,
                 }),
-                
+
                 "width": ("INT", {
                     "default": 512,
                     "min": 0,
